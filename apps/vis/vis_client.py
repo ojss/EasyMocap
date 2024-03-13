@@ -11,6 +11,7 @@ import time
 from easymocap.socket.base_client import BaseSocketClient
 import os
 
+
 def send_rand(client):
     import numpy as np
     N_person = 10
@@ -32,6 +33,7 @@ def send_rand(client):
         time.sleep(0.005)
     client.close()
 
+
 def send_dir(client, path, step):
     from os.path import join
     from glob import glob
@@ -39,6 +41,7 @@ def send_dir(client, path, step):
     from easymocap.mytools.reader import read_keypoints3d
     results = sorted(glob(join(path, '*.json')))
     for result in tqdm(results[::step]):
+
         if args.smpl:
             data = read_smpl(result)
             client.send_smpl(data)
@@ -47,8 +50,10 @@ def send_dir(client, path, step):
             client.send(data)
         time.sleep(0.005)
 
+
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', type=str, default='127.0.0.1')
     parser.add_argument('--port', type=int, default=9999)

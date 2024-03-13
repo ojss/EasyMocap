@@ -31,6 +31,7 @@ def main(inp, out, body_model):
     for filename in tqdm(filenames):
         with Timer('read', not timer):
             params = read_smpl(filename)
+            if len(params) == 0: continue
         params_ = Params.merge(params, share_shape=False)
         output = []
         if args.mode == 'vertices' or args.mode == 'mesh':
