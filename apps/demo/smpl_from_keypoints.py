@@ -17,7 +17,19 @@ import os
 from os.path import join
 from tqdm import tqdm
 import pickle
+import torch
 
+def convert_to_standard(params: dict, body_model):
+    new_poses, new_th, _ = body_model.convert_to_standard_smpl(
+        params['poses'],
+        params['shapes'],
+        params['Rh'],
+        params['Th']
+    )
+    params['Th'] = new_th
+    params['poses'] = new_poses
+    params['Rh'] = torch.ones(params['Rh'].shape) * -1
+    return params
 
 def smpl_from_skel(path, sub, out, skel3d, args):
     config = CONFIG[args.body]
@@ -33,12 +45,16 @@ def smpl_from_skel(path, sub, out, skel3d, args):
                                             weight_shape=weight_shape, weight_pose=weight_pose)
         result['body_params'] = body_params
 
+        # Add a field with the parameters converted to standard ones
+        result['body_params_smpl'] = convert_to_standard(result['body_params'].copy(), body_model)
+
     # write for each frame
     for nf, skelname in enumerate(tqdm(filenames, desc='writing')):
         basename = os.path.basename(skelname)
         outname = join(out, basename)
         vertout = join(out, 'verts', basename)
         res = []
+        res_smpl = []
         verts = []
         for idx, (pid, result) in enumerate(results3d.items()):
             frames = result['frames']
@@ -52,8 +68,16 @@ def smpl_from_skel(path, sub, out, skel3d, args):
                 val.update(params)
                 res.append(val)
                 verts.append(vs)
+
+                # Add the converted ones
+                val_smpl = {'id': pid}
+                params_smpl = select_nf(result['body_params_smpl'], nnf)
+                val_smpl.update(params_smpl)
+                res_smpl.append(val_smpl)
+
         all_verts.append(verts)
         write_smpl(outname, res)
+        write_smpl(join(out + "_converted", basename), res_smpl)
         # write_vertices(vertout, verts)
         with open('all_verts.pkl', 'wb') as fp:
             pickle.dump(all_verts, fp)

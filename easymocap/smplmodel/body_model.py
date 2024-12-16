@@ -293,6 +293,29 @@ class SMPLlayer(nn.Module):
             Th=Tnew.detach().cpu().numpy()
             )
         return res
+
+    def convert_to_standard_smpl(self, poses, shapes, Rh=None, Tnew=None):
+        if 'torch' not in str(type(poses)):
+            dtype, device = self.dtype, self.device
+            poses = to_tensor(poses, dtype, device)
+            shapes = to_tensor(shapes, dtype, device)
+            Rh = to_tensor(Rh, dtype, device)
+            Tnew = to_tensor(Tnew, dtype, device)
+
+        bn = poses.shape[0]
+
+        if shapes.shape[0] < bn:
+            shapes = shapes.expand(bn, -1)
+        vertices, joints = lbs(shapes, poses, self.v_template,
+                                self.shapedirs, self.posedirs,
+                                self.J_regressor, self.parents,
+                                self.weights, pose2rot=True, dtype=self.dtype, only_shape=True)
+        j0 = joints[:, 0, :]
+        rot = batch_rodrigues(Rh)
+        Th = Tnew - j0 + torch.einsum('bij,bj->bi', rot, j0)
+        poses[:, :3] = Rh
+
+        return (poses, Th, shapes)
     
     def full_poses(self, poses):
         if 'torch' not in str(type(poses)):
